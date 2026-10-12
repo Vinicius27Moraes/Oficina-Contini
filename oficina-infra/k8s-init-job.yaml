@@ -1,0 +1,23 @@
+# Cria as tabelas (prisma db push) e o usuário master (seed) DENTRO do cluster.
+# Rode depois que o pod do postgres estiver Ready:
+#   kubectl apply -f k8s-init-job.yaml
+#   kubectl logs -n oficina job/oficina-init -f
+# Para rodar de novo: kubectl delete job oficina-init -n oficina  e aplique outra vez.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: oficina-init
+  namespace: oficina
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: init
+        image: oficina-tools:v1
+        imagePullPolicy: IfNotPresent
+        command: ["sh", "-c", "npx prisma db push --skip-generate && npx tsx prisma/seed.ts"]
+        envFrom:
+        - secretRef:
+            name: oficina-secret
