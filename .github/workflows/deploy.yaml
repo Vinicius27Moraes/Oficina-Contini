@@ -13,7 +13,7 @@ jobs:
       - name: Build e carga da imagem no cluster
         run: |
           TAG=${GITHUB_SHA::7}
-          docker build -t oficina:$TAG .
+          docker build -t oficina:$TAG ./oficina
           kind load docker-image oficina:$TAG --name oficina
           echo "TAG=$TAG" >> $GITHUB_ENV
 
