@@ -12,7 +12,7 @@ export async function criarCliente(_prev: FormState, formData: FormData): Promis
 
   await prisma.cliente.create({ data: cleanEmpty(parsed.data) });
   revalidatePath("/clientes");
-  redirect("/clientes");
+  redirect("/clientes?salvo=1");
 }
 
 export async function atualizarCliente(id: string, _prev: FormState, formData: FormData): Promise<FormState> {
@@ -21,7 +21,7 @@ export async function atualizarCliente(id: string, _prev: FormState, formData: F
 
   await prisma.cliente.update({ where: { id }, data: cleanEmpty(parsed.data) });
   revalidatePath("/clientes");
-  redirect("/clientes");
+  redirect("/clientes?salvo=1");
 }
 
 export async function excluirCliente(id: string) {

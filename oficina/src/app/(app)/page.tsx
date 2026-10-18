@@ -16,7 +16,7 @@ export default async function DashboardPage() {
     prisma.veiculo.count(),
     prisma.peca
       .findMany({ orderBy: { quantidade: "asc" } })
-      .then((pecas) => pecas.filter((p) => p.quantidade <= p.quantidadeMinima).slice(0, 5)),
+      .then((pecas) => pecas.filter((p) => p.quantidade <= p.quantidadeMinima)),
     prisma.ordemServico.findMany({
       take: 6,
       orderBy: { dataAbertura: "desc" },
@@ -29,10 +29,16 @@ export default async function DashboardPage() {
     <div>
       <PageHeader eyebrow="Visão geral" title="Painel da oficina" />
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-6 flex flex-wrap gap-3" aria-label="Atalhos operacionais">
+        <Link href="/ordens/nova" className="rounded-sm bg-amber-500 px-4 py-2 text-sm font-semibold text-graphite-950 transition hover:bg-amber-400">+ Abrir ordem de serviço</Link>
+        <Link href="/clientes/novo" className="rounded-sm border border-graphite-600 px-4 py-2 text-sm font-semibold text-steel-300 transition hover:bg-graphite-800 hover:text-paper">+ Cadastrar cliente</Link>
+      </div>
+
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Ordens em aberto" value={ordensAbertas} accent />
         <Stat label="Clientes cadastrados" value={totalClientes} />
         <Stat label="Veículos cadastrados" value={totalVeiculos} />
+        <Stat label="Peças no mínimo ou abaixo" value={pecasBaixoEstoque.length} />
       </div>
 
       <div className="mb-6">
@@ -52,7 +58,7 @@ export default async function DashboardPage() {
           ) : (
             <ul className="divide-y divide-graphite-700">
               {ultimasOrdens.map((ordem) => (
-                <li key={ordem.id} className="flex items-center justify-between py-3">
+                <li key={ordem.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div>
                     <Link href={`/ordens/${ordem.id}`} className="text-sm font-semibold text-paper hover:text-amber-400">
                       OS #{ordem.numero} — {ordem.cliente.nome}
@@ -75,10 +81,14 @@ export default async function DashboardPage() {
             <p className="text-sm text-graphite-500">Nenhuma peça abaixo do mínimo.</p>
           ) : (
             <ul className="space-y-3">
-              {pecasBaixoEstoque.map((peca) => (
-                <li key={peca.id} className="flex items-center justify-between text-sm">
-                  <span className="text-paper">{peca.nome}</span>
-                  <span className="font-mono text-amber-400">{peca.quantidade} un.</span>
+              {pecasBaixoEstoque.slice(0, 5).map((peca) => (
+                <li key={peca.id} className="flex items-center justify-between gap-3 text-sm">
+                  <Link href={`/estoque/${peca.id}/editar`} className="min-w-0 truncate text-paper hover:text-amber-400 hover:underline">
+                    {peca.nome}
+                  </Link>
+                  <span className="shrink-0 font-mono text-amber-400" aria-label={`${peca.quantidade} unidades; mínimo ${peca.quantidadeMinima}`}>
+                    {peca.quantidade} / mín. {peca.quantidadeMinima}
+                  </span>
                 </li>
               ))}
             </ul>

@@ -1,6 +1,6 @@
 import type { ZodError } from "zod";
 
-export type FormState = { error?: string; fieldErrors?: Record<string, string> };
+export type FormState = { error?: string; success?: string; fieldErrors?: Record<string, string> };
 
 export function flatten(error: ZodError): Record<string, string> {
   const out: Record<string, string> = {};

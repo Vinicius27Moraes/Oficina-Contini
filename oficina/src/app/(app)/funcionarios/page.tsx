@@ -3,10 +3,12 @@ import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import Link from "next/link";
 import { RowActions } from "./RowActions";
+import { FilterableList } from "@/components/FilterableList";
+import { ActionNotice } from "@/components/ActionNotice";
 
 export const dynamic = "force-dynamic";
 
-export default async function FuncionariosPage() {
+export default async function FuncionariosPage({ searchParams }: { searchParams?: { salvo?: string } }) {
   const funcionarios = await prisma.funcionario.findMany({ orderBy: { nome: "asc" } });
 
   return (
@@ -21,6 +23,8 @@ export default async function FuncionariosPage() {
         }
       />
 
+      {searchParams?.salvo === "1" && <ActionNotice />}
+
       {funcionarios.length === 0 ? (
         <EmptyState
           title="Nenhum funcionário cadastrado"
@@ -29,20 +33,24 @@ export default async function FuncionariosPage() {
           actionLabel="Cadastrar funcionário"
         />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-graphite-700">
-          <table className="w-full text-left text-sm">
+        <FilterableList filterLabel="Status" filters={[
+          { value: "ativo", label: "Ativos" },
+          { value: "inativo", label: "Inativos" },
+        ]}>
+        <div className="overflow-x-auto rounded-lg border border-graphite-700">
+          <table className="w-full min-w-[680px] text-left text-sm">
             <thead className="bg-graphite-800 text-xs uppercase tracking-wider text-graphite-500">
               <tr>
-                <th className="px-4 py-3">Nome</th>
-                <th className="px-4 py-3">Cargo</th>
-                <th className="px-4 py-3">Telefone</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3" />
+                <th scope="col" className="px-4 py-3">Nome</th>
+                <th scope="col" className="px-4 py-3">Cargo</th>
+                <th scope="col" className="px-4 py-3">Telefone</th>
+                <th scope="col" className="px-4 py-3">Status</th>
+                <th scope="col" className="px-4 py-3"><span className="sr-only">Ações</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-graphite-700">
               {funcionarios.map((f) => (
-                <tr key={f.id} className="hover:bg-graphite-800/50">
+                <tr key={f.id} data-list-row data-filter={f.ativo ? "ativo" : "inativo"} data-search={`${f.nome} ${f.cargo} ${f.telefone ?? ""}`} className="hover:bg-graphite-800/50">
                   <td className="px-4 py-3 font-medium text-paper">{f.nome}</td>
                   <td className="px-4 py-3 text-graphite-400">{f.cargo}</td>
                   <td className="px-4 py-3 text-graphite-400">{f.telefone ?? "—"}</td>
@@ -57,6 +65,7 @@ export default async function FuncionariosPage() {
             </tbody>
           </table>
         </div>
+        </FilterableList>
       )}
     </div>
   );

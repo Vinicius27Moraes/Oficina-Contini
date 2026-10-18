@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useFormState } from "react-dom";
+import Link from "next/link";
 import { FormField, inputClass } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import type { Cliente, Veiculo, Funcionario } from "@prisma/client";
@@ -20,6 +21,7 @@ export function OrdemForm({
 }) {
   const [state, formAction] = useFormState(action, {});
   const [clienteId, setClienteId] = useState("");
+  const [veiculoId, setVeiculoId] = useState("");
 
   const veiculosDoCliente = useMemo(
     () => clientes.find((c) => c.id === clienteId)?.veiculos ?? [],
@@ -37,7 +39,8 @@ export function OrdemForm({
           id="clienteId"
           name="clienteId"
           value={clienteId}
-          onChange={(e) => setClienteId(e.target.value)}
+          required
+          onChange={(e) => { setClienteId(e.target.value); setVeiculoId(""); }}
           className={inputClass}
         >
           <option value="">Selecione o cliente</option>
@@ -48,13 +51,18 @@ export function OrdemForm({
       </FormField>
 
       <FormField label="Veículo" htmlFor="veiculoId" error={state?.fieldErrors?.veiculoId}>
-        <select id="veiculoId" name="veiculoId" className={inputClass} disabled={!clienteId}>
+        <select id="veiculoId" name="veiculoId" className={inputClass} value={veiculoId} required disabled={!clienteId || veiculosDoCliente.length === 0} onChange={(e) => setVeiculoId(e.target.value)}>
           <option value="">{clienteId ? "Selecione o veículo" : "Selecione um cliente primeiro"}</option>
           {veiculosDoCliente.map((v) => (
             <option key={v.id} value={v.id}>{v.placa} — {v.marca} {v.modelo}</option>
           ))}
         </select>
       </FormField>
+      {clienteId && veiculosDoCliente.length === 0 && (
+        <p className="-mt-2 text-xs text-amber-300" role="status">
+          Este cliente ainda não tem veículo cadastrado. <Link href="/veiculos/novo" className="font-semibold underline">Cadastrar veículo</Link>
+        </p>
+      )}
 
       <FormField label="Mecânico responsável" htmlFor="funcionarioId" error={state?.fieldErrors?.funcionarioId}>
         <select id="funcionarioId" name="funcionarioId" className={inputClass}>

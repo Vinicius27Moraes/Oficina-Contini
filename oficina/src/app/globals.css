@@ -6,4 +6,23 @@
   body {
     @apply bg-graphite-950 text-paper antialiased;
   }
+
+  :where(a, button, input, select, textarea):focus-visible {
+    @apply outline-none ring-2 ring-amber-400 ring-offset-2 ring-offset-graphite-950;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

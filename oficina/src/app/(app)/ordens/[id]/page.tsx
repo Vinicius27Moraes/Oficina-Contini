@@ -8,6 +8,7 @@ import { ItemForm } from "./ItemForm";
 import { StatusControls } from "./StatusControls";
 import { RemoveItemButton } from "./RemoveItemButton";
 import { GerarOrcamentoPdf } from "./GerarOrcamentoPdf";
+import { ActionNotice } from "@/components/ActionNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-export default async function OrdemDetalhePage({ params }: { params: { id: string } }) {
+export default async function OrdemDetalhePage({ params, searchParams }: { params: { id: string }; searchParams?: { salvo?: string } }) {
   const [ordem, pecas, config] = await Promise.all([
     prisma.ordemServico.findUnique({
       where: { id: params.id },
@@ -39,6 +40,7 @@ export default async function OrdemDetalhePage({ params }: { params: { id: strin
     email: config?.email ?? null,
     validadeOrcamentoDias: config?.validadeOrcamentoDias ?? 7,
   };
+  const ordemEncerrada = ordem.status === "FINALIZADA" || ordem.status === "CANCELADA";
 
   // Decimal do Prisma não é serializável de Server -> Client Component,
   // então convertemos para número simples antes de passar adiante.
@@ -56,7 +58,7 @@ export default async function OrdemDetalhePage({ params }: { params: { id: strin
         eyebrow={`Ordem de serviço · aberta em ${ordem.dataAbertura.toLocaleDateString("pt-BR")}`}
         title={`OS #${ordem.numero}`}
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <GerarOrcamentoPdf
               numero={ordem.numero}
               dataAbertura={ordem.dataAbertura.toISOString()}
@@ -72,6 +74,8 @@ export default async function OrdemDetalhePage({ params }: { params: { id: strin
         }
       />
 
+      {searchParams?.salvo === "1" && <ActionNotice message="Ordem de serviço aberta com sucesso." />}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card>
@@ -80,14 +84,15 @@ export default async function OrdemDetalhePage({ params }: { params: { id: strin
             {ordem.itens.length === 0 ? (
               <p className="text-sm text-graphite-500">Nenhum item adicionado ainda.</p>
             ) : (
-              <table className="w-full text-left text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[620px] text-left text-sm">
                 <thead className="text-xs uppercase tracking-wider text-graphite-500">
                   <tr>
-                    <th className="py-2">Descrição</th>
-                    <th className="py-2">Qtd.</th>
-                    <th className="py-2">Valor unit.</th>
-                    <th className="py-2">Subtotal</th>
-                    <th className="py-2" />
+                    <th scope="col" className="py-2">Descrição</th>
+                    <th scope="col" className="py-2">Qtd.</th>
+                    <th scope="col" className="py-2">Valor unit.</th>
+                    <th scope="col" className="py-2">Subtotal</th>
+                    <th scope="col" className="py-2"><span className="sr-only">Ações</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-graphite-700">
@@ -101,12 +106,13 @@ export default async function OrdemDetalhePage({ params }: { params: { id: strin
                       <td className="py-2 font-mono text-graphite-400">{formatBRL(Number(item.valorUnitario))}</td>
                       <td className="py-2 font-mono text-paper">{formatBRL(Number(item.valorUnitario) * item.quantidade)}</td>
                       <td className="py-2 text-right">
-                        <RemoveItemButton ordemId={ordem.id} itemId={item.id} />
+                        <RemoveItemButton ordemId={ordem.id} itemId={item.id} disabled={ordemEncerrada} />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
 
             <div className="mt-3 flex justify-end border-t border-graphite-700 pt-3">
@@ -118,7 +124,7 @@ export default async function OrdemDetalhePage({ params }: { params: { id: strin
 
           <Card>
             <h2 className="mb-3 font-display text-lg font-semibold text-paper">Adicionar item</h2>
-            <ItemForm ordemId={ordem.id} pecas={pecasParaFormulario} />
+            <ItemForm ordemId={ordem.id} pecas={pecasParaFormulario} bloqueado={ordemEncerrada} />
           </Card>
         </div>
 

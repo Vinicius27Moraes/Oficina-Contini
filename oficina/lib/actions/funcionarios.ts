@@ -12,7 +12,7 @@ export async function criarFuncionario(_prev: FormState, formData: FormData): Pr
 
   await prisma.funcionario.create({ data: cleanEmpty(parsed.data) });
   revalidatePath("/funcionarios");
-  redirect("/funcionarios");
+  redirect("/funcionarios?salvo=1");
 }
 
 export async function alternarStatusFuncionario(id: string, ativo: boolean) {

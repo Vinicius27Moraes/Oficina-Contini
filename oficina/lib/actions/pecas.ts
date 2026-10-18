@@ -15,7 +15,7 @@ export async function criarPeca(_prev: FormState, formData: FormData): Promise<F
 
   await prisma.peca.create({ data: cleanEmpty(parsed.data) });
   revalidatePath("/estoque");
-  redirect("/estoque");
+  redirect("/estoque?salvo=1");
 }
 
 export async function atualizarPeca(id: string, _prev: FormState, formData: FormData): Promise<FormState> {
@@ -24,7 +24,7 @@ export async function atualizarPeca(id: string, _prev: FormState, formData: Form
 
   await prisma.peca.update({ where: { id }, data: cleanEmpty(parsed.data) });
   revalidatePath("/estoque");
-  redirect("/estoque");
+  redirect("/estoque?salvo=1");
 }
 
 export async function excluirPeca(id: string) {

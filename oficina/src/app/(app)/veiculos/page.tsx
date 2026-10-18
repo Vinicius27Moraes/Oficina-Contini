@@ -4,10 +4,12 @@ import { EmptyState } from "@/components/EmptyState";
 import { PlateBadge } from "@/components/PlateBadge";
 import Link from "next/link";
 import { RowActions } from "./RowActions";
+import { FilterableList } from "@/components/FilterableList";
+import { ActionNotice } from "@/components/ActionNotice";
 
 export const dynamic = "force-dynamic";
 
-export default async function VeiculosPage() {
+export default async function VeiculosPage({ searchParams }: { searchParams?: { salvo?: string } }) {
   const veiculos = await prisma.veiculo.findMany({
     orderBy: { createdAt: "desc" },
     include: { cliente: true },
@@ -25,6 +27,8 @@ export default async function VeiculosPage() {
         }
       />
 
+      {searchParams?.salvo === "1" && <ActionNotice />}
+
       {veiculos.length === 0 ? (
         <EmptyState
           title="Nenhum veículo cadastrado"
@@ -33,19 +37,20 @@ export default async function VeiculosPage() {
           actionLabel="Cadastrar veículo"
         />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-graphite-700">
-          <table className="w-full text-left text-sm">
+        <FilterableList>
+        <div className="overflow-x-auto rounded-lg border border-graphite-700">
+          <table className="w-full min-w-[680px] text-left text-sm">
             <thead className="bg-graphite-800 text-xs uppercase tracking-wider text-graphite-500">
               <tr>
-                <th className="px-4 py-3">Placa</th>
-                <th className="px-4 py-3">Veículo</th>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3" />
+                <th scope="col" className="px-4 py-3">Placa</th>
+                <th scope="col" className="px-4 py-3">Veículo</th>
+                <th scope="col" className="px-4 py-3">Cliente</th>
+                <th scope="col" className="px-4 py-3"><span className="sr-only">Ações</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-graphite-700">
               {veiculos.map((veiculo) => (
-                <tr key={veiculo.id} className="hover:bg-graphite-800/50">
+                <tr key={veiculo.id} data-list-row data-search={`${veiculo.placa} ${veiculo.marca} ${veiculo.modelo} ${veiculo.cliente.nome}`} className="hover:bg-graphite-800/50">
                   <td className="px-4 py-3"><PlateBadge placa={veiculo.placa} /></td>
                   <td className="px-4 py-3 text-paper">{veiculo.marca} {veiculo.modelo} {veiculo.ano ? `· ${veiculo.ano}` : ""}</td>
                   <td className="px-4 py-3 text-graphite-400">{veiculo.cliente.nome}</td>
@@ -55,6 +60,7 @@ export default async function VeiculosPage() {
             </tbody>
           </table>
         </div>
+        </FilterableList>
       )}
     </div>
   );

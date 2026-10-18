@@ -11,9 +11,14 @@ export async function criarOrdem(_prev: FormState, formData: FormData): Promise<
   const parsed = ordemSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: flatten(parsed.error) };
 
+  const veiculo = await prisma.veiculo.findUnique({ where: { id: parsed.data.veiculoId }, select: { clienteId: true } });
+  if (!veiculo || veiculo.clienteId !== parsed.data.clienteId) {
+    return { fieldErrors: { veiculoId: "Selecione um veículo pertencente ao cliente escolhido." } };
+  }
+
   const ordem = await prisma.ordemServico.create({ data: cleanEmpty(parsed.data) });
   revalidatePath("/ordens");
-  redirect(`/ordens/${ordem.id}`);
+  redirect(`/ordens/${ordem.id}?salvo=1`);
 }
 
 export async function adicionarItem(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -22,28 +27,42 @@ export async function adicionarItem(_prev: FormState, formData: FormData): Promi
 
   const { ordemId, pecaId, quantidade, ...rest } = cleanEmpty(parsed.data);
 
-  await prisma.$transaction(async (tx) => {
-    await tx.itemOrdemServico.create({
-      data: { ordemId, pecaId: pecaId || null, quantidade, ...rest },
-    });
+  try {
+    await prisma.$transaction(async (tx) => {
+      const ordem = await tx.ordemServico.findUnique({ where: { id: ordemId }, select: { status: true } });
+      if (!ordem) throw new Error("A ordem de serviço não foi encontrada.");
+      if (ordem.status === "FINALIZADA" || ordem.status === "CANCELADA") {
+        throw new Error("Não é possível alterar itens de uma ordem finalizada ou cancelada.");
+      }
 
-    // Baixa automática no estoque quando o item está vinculado a uma peça.
-    if (pecaId) {
-      await tx.peca.update({
-        where: { id: pecaId },
-        data: { quantidade: { decrement: quantidade } },
+      // A baixa condicional evita que operações simultâneas deixem o estoque negativo.
+      if (pecaId) {
+        const baixa = await tx.peca.updateMany({
+          where: { id: pecaId, quantidade: { gte: quantidade } },
+          data: { quantidade: { decrement: quantidade } },
+        });
+        if (baixa.count === 0) throw new Error("Estoque insuficiente para a quantidade informada.");
+      }
+
+      await tx.itemOrdemServico.create({
+        data: { ordemId, pecaId: pecaId || null, quantidade, ...rest },
       });
-    }
-
-    await recalcularTotal(tx, ordemId);
-  });
+      await recalcularTotal(tx, ordemId);
+    });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Não foi possível adicionar o item." };
+  }
 
   revalidatePath(`/ordens/${ordemId}`);
-  return {};
+  return { success: pecaId ? "Item adicionado e estoque atualizado." : "Item adicionado à ordem." };
 }
 
 export async function removerItem(ordemId: string, itemId: string) {
   await prisma.$transaction(async (tx) => {
+    const ordem = await tx.ordemServico.findUnique({ where: { id: ordemId }, select: { status: true } });
+    if (!ordem || ordem.status === "FINALIZADA" || ordem.status === "CANCELADA") {
+      throw new Error("Esta ordem não permite alterações de itens.");
+    }
     const item = await tx.itemOrdemServico.findUnique({ where: { id: itemId } });
     if (!item) return;
 

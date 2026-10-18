@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PlateBadge } from "@/components/PlateBadge";
+import { FilterableList } from "@/components/FilterableList";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -37,21 +38,28 @@ export default async function OrdensPage() {
           actionLabel="Abrir ordem de serviço"
         />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-graphite-700">
-          <table className="w-full text-left text-sm">
+        <FilterableList filterLabel="Status" filters={[
+          { value: "ABERTA", label: "Aberta" },
+          { value: "EM_ANDAMENTO", label: "Em andamento" },
+          { value: "AGUARDANDO_PECA", label: "Aguardando peça" },
+          { value: "FINALIZADA", label: "Finalizada" },
+          { value: "CANCELADA", label: "Cancelada" },
+        ]}>
+        <div className="overflow-x-auto rounded-lg border border-graphite-700">
+          <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-graphite-800 text-xs uppercase tracking-wider text-graphite-500">
               <tr>
-                <th className="px-4 py-3">OS</th>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">Veículo</th>
-                <th className="px-4 py-3">Aberta em</th>
-                <th className="px-4 py-3">Total</th>
-                <th className="px-4 py-3">Status</th>
+                <th scope="col" className="px-4 py-3">OS</th>
+                <th scope="col" className="px-4 py-3">Cliente</th>
+                <th scope="col" className="px-4 py-3">Veículo</th>
+                <th scope="col" className="px-4 py-3">Aberta em</th>
+                <th scope="col" className="px-4 py-3">Total</th>
+                <th scope="col" className="px-4 py-3">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-graphite-700">
               {ordens.map((ordem) => (
-                <tr key={ordem.id} className="cursor-pointer hover:bg-graphite-800/50">
+                <tr key={ordem.id} data-list-row data-filter={ordem.status} data-search={`#${ordem.numero} ${ordem.cliente.nome} ${ordem.veiculo.placa} ${ordem.veiculo.marca} ${ordem.veiculo.modelo}`} className="hover:bg-graphite-800/50">
                   <td className="px-4 py-3">
                     <Link href={`/ordens/${ordem.id}`} className="font-mono font-semibold text-amber-400 hover:underline">
                       #{ordem.numero}
@@ -67,6 +75,7 @@ export default async function OrdensPage() {
             </tbody>
           </table>
         </div>
+        </FilterableList>
       )}
     </div>
   );

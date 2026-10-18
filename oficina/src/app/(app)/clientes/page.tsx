@@ -3,10 +3,12 @@ import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import Link from "next/link";
 import { RowActions } from "./RowActions";
+import { FilterableList } from "@/components/FilterableList";
+import { ActionNotice } from "@/components/ActionNotice";
 
 export const dynamic = "force-dynamic";
 
-export default async function ClientesPage() {
+export default async function ClientesPage({ searchParams }: { searchParams?: { salvo?: string } }) {
   const clientes = await prisma.cliente.findMany({
     orderBy: { nome: "asc" },
     include: { _count: { select: { veiculos: true } } },
@@ -24,6 +26,8 @@ export default async function ClientesPage() {
         }
       />
 
+      {searchParams?.salvo === "1" && <ActionNotice />}
+
       {clientes.length === 0 ? (
         <EmptyState
           title="Nenhum cliente cadastrado"
@@ -32,20 +36,21 @@ export default async function ClientesPage() {
           actionLabel="Cadastrar cliente"
         />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-graphite-700">
-          <table className="w-full text-left text-sm">
+        <FilterableList>
+        <div className="overflow-x-auto rounded-lg border border-graphite-700">
+          <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="bg-graphite-800 text-xs uppercase tracking-wider text-graphite-500">
               <tr>
-                <th className="px-4 py-3">Nome</th>
-                <th className="px-4 py-3">Telefone</th>
-                <th className="px-4 py-3">E-mail</th>
-                <th className="px-4 py-3">Veículos</th>
-                <th className="px-4 py-3" />
+                <th scope="col" className="px-4 py-3">Nome</th>
+                <th scope="col" className="px-4 py-3">Telefone</th>
+                <th scope="col" className="px-4 py-3">E-mail</th>
+                <th scope="col" className="px-4 py-3">Veículos</th>
+                <th scope="col" className="px-4 py-3"><span className="sr-only">Ações</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-graphite-700">
               {clientes.map((cliente) => (
-                <tr key={cliente.id} className="hover:bg-graphite-800/50">
+                <tr key={cliente.id} data-list-row data-search={`${cliente.nome} ${cliente.telefone} ${cliente.email ?? ""} ${cliente.cpfCnpj ?? ""}`} className="hover:bg-graphite-800/50">
                   <td className="px-4 py-3 font-medium text-paper">{cliente.nome}</td>
                   <td className="px-4 py-3 text-graphite-400">{cliente.telefone}</td>
                   <td className="px-4 py-3 text-graphite-400">{cliente.email ?? "—"}</td>
@@ -58,6 +63,7 @@ export default async function ClientesPage() {
             </tbody>
           </table>
         </div>
+        </FilterableList>
       )}
     </div>
   );

@@ -33,7 +33,7 @@ export async function criarUsuario(_prev: FormState, formData: FormData): Promis
   });
 
   revalidatePath("/usuarios");
-  redirect("/usuarios");
+  redirect("/usuarios?salvo=1");
 }
 
 export async function alternarStatusUsuario(id: string, ativo: boolean) {

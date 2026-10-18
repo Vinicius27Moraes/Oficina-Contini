@@ -15,7 +15,7 @@ export async function criarVeiculo(_prev: FormState, formData: FormData): Promis
 
   await prisma.veiculo.create({ data: cleanEmpty(parsed.data) });
   revalidatePath("/veiculos");
-  redirect("/veiculos");
+  redirect("/veiculos?salvo=1");
 }
 
 export async function atualizarVeiculo(id: string, _prev: FormState, formData: FormData): Promise<FormState> {
@@ -24,7 +24,7 @@ export async function atualizarVeiculo(id: string, _prev: FormState, formData: F
 
   await prisma.veiculo.update({ where: { id }, data: cleanEmpty(parsed.data) });
   revalidatePath("/veiculos");
-  redirect("/veiculos");
+  redirect("/veiculos?salvo=1");
 }
 
 export async function excluirVeiculo(id: string) {
