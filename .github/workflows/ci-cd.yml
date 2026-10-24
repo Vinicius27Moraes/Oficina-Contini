@@ -1,0 +1,146 @@
+name: CI/CD
+
+# Fluxo:
+#   branch -> Pull Request -> job "validate" (máquina do GitHub)
+#   admin faz o merge na main -> validate de novo -> job "deploy" (seu runner)
+
+on:
+  # Roda em todo Pull Request para a main. Sem filtro de "paths" de propósito:
+  # se o check obrigatório fosse pulado, o PR ficaria bloqueado para sempre.
+  pull_request:
+    branches: [main]
+
+  # Roda só quando o código entra na main (merge do PR).
+  push:
+    branches: [main]
+    paths:
+      - "oficina/**"
+      - "oficina-infra/**"
+      - "!oficina-infra/ansible/**"
+      - "!oficina-infra/monitoring/**"
+      - ".github/workflows/ci-cd.yml"
+
+# O token do workflow só pode ler o repositório.
+permissions:
+  contents: read
+
+# Em PR, um push novo cancela a validação antiga.
+# Na main, nunca cancela: um deploy em andamento termina antes do próximo começar.
+concurrency:
+  group: oficina-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  validate:
+    name: Validar aplicação   # este é o nome do check que o ruleset da main vai exigir
+    runs-on: ubuntu-latest    # máquina descartável do GitHub, nunca o seu computador
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: oficina
+    env:
+      # Valores falsos: o Prisma exige as variáveis, mas o build não conecta ao banco.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: oficina/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar cliente do Prisma
+        run: npx prisma generate
+
+      - name: Verificar tipos TypeScript
+        run: npx tsc --noEmit
+
+      # --if-present: só roda se o script existir no package.json.
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Testes
+        run: npm test --if-present
+
+      # Só avisa; não bloqueia o PR por vulnerabilidades que já existiam.
+      - name: Auditoria de dependências
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Gerar build de produção
+        run: npm run build
+
+  deploy:
+    name: Deploy no cluster kind
+    # Nunca roda em PR: código de PR não chega ao seu runner.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: self-hosted
+    timeout-minutes: 20
+    # Cria o ambiente "producao" no GitHub. Em Settings > Environments você pode
+    # exigir aprovação manual antes de cada deploy, se quiser uma trava extra.
+    environment:
+      name: producao
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Construir imagem com tag imutável
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE_TAG="${GITHUB_SHA::12}"
+          docker build --pull -t "oficina:${IMAGE_TAG}" ./oficina
+          kind load docker-image "oficina:${IMAGE_TAG}" --name oficina
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_ENV"
+
+      - name: Atualizar deployment e aguardar rollout
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl set image deployment/web "web=oficina:${IMAGE_TAG}" -n oficina
+          # Registra o commit no histórico (kubectl rollout history)
+          kubectl annotate deployment/web \
+            kubernetes.io/change-cause="commit ${GITHUB_SHA}" \
+            -n oficina --overwrite
+          if ! kubectl rollout status deployment/web -n oficina --timeout=180s; then
+            echo "Rollout falhou; restaurando a revisão anterior"
+            kubectl rollout undo deployment/web -n oficina
+            kubectl rollout status deployment/web -n oficina --timeout=180s
+            exit 1
+          fi
+
+      # Confirma que a aplicação responde de verdade, não só que o pod subiu.
+      - name: Teste de fumaça (/api/health/ready)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 10); do
+            if kubectl exec deployment/web -n oficina -- node -e \
+              "fetch('http://127.0.0.1:3000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then
+              echo "Aplicação respondeu OK"
+              exit 0
+            fi
+            echo "Tentativa ${i}/10 falhou; aguardando 3s"
+            sleep 3
+          done
+          echo "Teste de fumaça falhou; restaurando a revisão anterior"
+          kubectl rollout undo deployment/web -n oficina
+          kubectl rollout status deployment/web -n oficina --timeout=180s
+          exit 1
+
+      # Mantém as 5 imagens mais recentes no Docker do host.
+      - name: Limpar imagens antigas
+        shell: bash
+        run: |
+          docker images oficina --format '{{.Tag}}' | tail -n +6 \
+            | xargs -r -I{} docker rmi "oficina:{}" || true
+          docker image prune -f --filter "until=168h" || true

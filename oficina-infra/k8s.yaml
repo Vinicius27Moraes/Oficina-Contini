@@ -4,23 +4,6 @@ metadata:
   name: oficina
 ---
 apiVersion: v1
-kind: Secret
-metadata:
-  name: oficina-secret
-  namespace: oficina
-stringData:
-  POSTGRES_USER: oficina
-  POSTGRES_PASSWORD: "d0a5bea90163fe5c7aaf6b94e11973aa"
-  POSTGRES_DB: oficina
-  # A senha nas duas URLs deve ser a MESMA de POSTGRES_PASSWORD
-  DATABASE_URL: postgresql://oficina:d0a5bea90163fe5c7aaf6b94e11973aa@postgres:5432/oficina?schema=public&connection_limit=5   # <-- TROCAR a senha
-  DIRECT_URL: postgresql://oficina:d0a5bea90163fe5c7aaf6b94e11973aa@postgres:5432/oficina?schema=public                        # <-- TROCAR a senha
-  AUTH_SECRET: "VO3nJZm1TJzFZRqQQAL05+gbmbZVHWKuRYdVZyogzE8="
-  AUTH_TRUST_HOST: "true"
-  MASTER_EMAIL: "vcontini@admin"
-  MASTER_PASSWORD: "oficinamoraes"
----
-apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: pg-data
