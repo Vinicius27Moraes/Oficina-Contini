@@ -1,0 +1,21 @@
+# Banco PostgreSQL SÓ para desenvolvimento local. Não tem relação com o do cluster.
+# Uso: docker compose up -d     (parar: docker compose down; apagar dados: down -v)
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: oficina
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: oficina
+    ports:
+      - "5433:5432"   # 5433 no seu PC, para não conflitar com outro Postgres
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oficina -d oficina"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  dbdata:

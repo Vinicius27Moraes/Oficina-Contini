@@ -1,0 +1,15 @@
+# Framework e documentação OpenAPI/Swagger
+Flask>=3.0,<4
+flask-smorest>=0.44,<1
+marshmallow>=3.20,<4
+
+# Banco de dados (PostgreSQL)
+SQLAlchemy>=2.0,<2.1
+psycopg[binary]>=3.1,<4
+
+# Configuração e servidor
+python-dotenv>=1.0,<2
+gunicorn>=22.0
+
+# Testes
+pytest>=8.0,<9
